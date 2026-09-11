@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CloudGuard — AWS Governance Platform</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#0a0e1a;color:#e0e0e0;min-height:100vh}
+header{background:linear-gradient(135deg,#0d1b2a,#1a2744);padding:18px 40px;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;gap:14px}
+.logo{font-size:26px;color:#4fc3f7;font-weight:800;letter-spacing:2px}
+.tagline{font-size:12px;color:#546e7a;margin-left:4px}
+.last-updated{margin-left:auto;font-size:12px;color:#37474f;background:#0d1b2a;padding:6px 14px;border-radius:20px;border:1px solid #1e3a5f}
+.container{padding:28px 40px;max-width:1600px;margin:0 auto}
+.stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:28px}
+.stat-card{background:linear-gradient(145deg,#0d1b2a,#111927);border:1px solid #1e3a5f;border-radius:14px;padding:22px 16px;text-align:center;transition:transform .2s}
+.stat-card:hover{transform:translateY(-3px)}
+.stat-card .number{font-size:38px;font-weight:800;line-height:1}
+.stat-card .label{font-size:11px;color:#546e7a;margin-top:8px;text-transform:uppercase;letter-spacing:1.5px}
+.c-total .number{color:#4fc3f7}
+.c-critical .number{color:#ef5350}
+.c-high .number{color:#ffa726}
+.c-medium .number{color:#ffee58}
+.c-low .number{color:#66bb6a}
+.c-cost .number{color:#ab47bc}
+.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:28px}
+.chart-card{background:#0d1b2a;border:1px solid #1e3a5f;border-radius:14px;padding:20px}
+.chart-title{font-size:12px;color:#546e7a;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;font-weight:600}
+.chart-wrap{position:relative;height:180px}
+.filters{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:6px 16px;border-radius:20px;border:1px solid #1e3a5f;background:#0d1b2a;color:#90a4ae;font-size:12px;cursor:pointer;transition:all .2s}
+.filter-btn.active,.filter-btn:hover{background:#1e3a5f;color:#4fc3f7;border-color:#4fc3f7}
+.search-box{margin-left:auto;padding:6px 16px;border-radius:20px;border:1px solid #1e3a5f;background:#0d1b2a;color:#e0e0e0;font-size:12px;outline:none;width:240px}
+.search-box:focus{border-color:#4fc3f7}
+.section-title{font-size:13px;font-weight:700;color:#546e7a;margin-bottom:14px;text-transform:uppercase;letter-spacing:1.5px}
+table{width:100%;border-collapse:collapse;background:#0d1b2a;border-radius:14px;overflow:hidden;border:1px solid #1e3a5f}
+th{background:#080f1a;padding:13px 16px;text-align:left;font-size:11px;color:#37474f;text-transform:uppercase;letter-spacing:1px;font-weight:700}
+td{padding:12px 16px;border-top:1px solid #111f33;font-size:13px;vertical-align:top}
+tr:hover td{background:#0f1e35}
+.badge{display:inline-block;padding:3px 11px;border-radius:20px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.b-CRITICAL{background:#1a0505;color:#ef5350;border:1px solid #ef5350}
+.b-HIGH{background:#1a0d00;color:#ffa726;border:1px solid #ffa726}
+.b-MEDIUM{background:#1a1700;color:#ffee58;border:1px solid #ffee58}
+.b-LOW{background:#051205;color:#66bb6a;border:1px solid #66bb6a}
+.b-SECURITY{background:#051020;color:#4fc3f7;border:1px solid #4fc3f7}
+.b-FINOPS{background:#12051a;color:#ab47bc;border:1px solid #ab47bc}
+.b-OPEN{background:#1a0505;color:#ef5350;border:1px solid #ef5350}
+.b-AWAITING_APPROVAL{background:#1a1000;color:#ffa726;border:1px solid #ffa726}
+.b-REMEDIATED{background:#051205;color:#66bb6a;border:1px solid #66bb6a}
+.b-DISMISSED{background:#111;color:#546e7a;border:1px solid #37474f}
+.b-APPROVED_FOR_FIX{background:#051a1a;color:#26c6da;border:1px solid #26c6da}
+.risk-wrap{display:flex;align-items:center;gap:8px}
+.risk-bar{height:5px;border-radius:3px;background:#1e3a5f;flex:1;min-width:60px}
+.risk-fill{height:100%;border-radius:3px}
+.mono{font-family:monospace;font-size:12px;color:#4dd0e1}
+.sub{color:#37474f;font-size:11px;margin-top:2px}
+.ai-text{font-size:12px;color:#78909c;line-height:1.5;max-width:300px}
+.loading{text-align:center;padding:60px;color:#37474f}
+.action-btns{display:flex;flex-direction:column;gap:6px;min-width:130px}
+.btn{padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:none;transition:all .2s;text-align:center;letter-spacing:.3px}
+.btn-fix{background:#1a3a1a;color:#66bb6a;border:1px solid #66bb6a}
+.btn-fix:hover{background:#66bb6a;color:#000}
+.btn-dismiss{background:#1a1a1a;color:#546e7a;border:1px solid #37474f}
+.btn-dismiss:hover{background:#37474f;color:#e0e0e0}
+.btn-done{background:#111;color:#37474f;border:1px solid #1e3a5f;cursor:default}
+.toast{position:fixed;bottom:24px;right:24px;background:#1e3a5f;border:1px solid #4fc3f7;color:#4fc3f7;padding:14px 20px;border-radius:12px;font-size:13px;z-index:999;display:none;max-width:380px;line-height:1.5}
+.cost-tag{color:#ab47bc;font-size:11px;margin-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:22px">☁️</span>
+  <div>
+    <div class="logo">CloudGuard</div>
+    <div class="tagline">AWS Security & FinOps Governance Platform</div>
+  </div>
+  <div class="last-updated" id="last-updated">Loading...</div>
+</header>
+
+<div class="container">
+  <div class="stats-grid" id="stats-grid">
+    <div class="loading" style="grid-column:1/-1">Loading dashboard...</div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Findings by Severity</div>
+      <div class="chart-wrap"><canvas id="severityChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Security vs FinOps</div>
+      <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Findings by Status</div>
+      <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('ALL',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('CRITICAL',this)">● Critical</button>
+    <button class="filter-btn" onclick="setFilter('HIGH',this)">● High</button>
+    <button class="filter-btn" onclick="setFilter('MEDIUM',this)">● Medium</button>
+    <button class="filter-btn" onclick="setFilter('LOW',this)">● Low</button>
+    <button class="filter-btn" onclick="setFilter('SECURITY',this)">Security</button>
+    <button class="filter-btn" onclick="setFilter('FINOPS',this)">FinOps</button>
+    <button class="filter-btn" onclick="setFilter('OPEN',this)">Open</button>
+    <button class="filter-btn" onclick="setFilter('REMEDIATED',this)">Remediated</button>
+    <input class="search-box" id="search" placeholder="Search resource, title, finding ID..." oninput="renderTable()"/>
+  </div>
+
+  <div class="section-title" id="table-label">All Findings</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Finding ID</th>
+        <th>Title</th>
+        <th>Resource</th>
+        <th>Category</th>
+        <th>Severity</th>
+        <th>Status</th>
+        <th>Risk Score</th>
+        <th>AI Explanation</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="findings-body">
+      <tr><td colspan="9" class="loading">Fetching findings...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DASHBOARD_API = 'https://dyu55kcq2bbxfdfo3rmwptdjje0finsm.lambda-url.ap-south-1.on.aws/';
+const REMEDIATION_API = 'https://kmdm7laneksf3xht2bdchfrdkq0sudki.lambda-url.ap-south-1.on.aws/';
+
+let allFindings = [];
+let currentFilter = 'ALL';
+let severityChart, categoryChart, statusChart;
+
+function riskColor(s){
+  if(s>=80)return'#ef5350';
+  if(s>=60)return'#ffa726';
+  if(s>=40)return'#ffee58';
+  return'#66bb6a';
+}
+
+function showToast(msg, ok=true){
+  const t = document.getElementById('toast');
+  t.style.background = ok ? '#0d1b2a' : '#1a0505';
+  t.style.borderColor = ok ? '#66bb6a' : '#ef5350';
+  t.style.color = ok ? '#66bb6a' : '#ef5350';
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(()=>t.style.display='none', 5000);
+}
+
+function setFilter(f, el){
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderTable();
+}
+
+function getFiltered(){
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  return allFindings.filter(f=>{
+    const mf = currentFilter==='ALL'||f.severity===currentFilter||f.category===currentFilter||f.status===currentFilter;
+    const ms = !q||(f.finding_id||'').toLowerCase().includes(q)||(f.title||'').toLowerCase().includes(q)||(f.resource_id||'').toLowerCase().includes(q);
+    return mf && ms;
+  });
+}
+
+async function doAction(finding_id, action, btnEl){
+  btnEl.disabled = true;
+  btnEl.textContent = action==='approve'?'Working...':'Dismissing...';
+  try{
+    const res = await fetch(REMEDIATION_API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({finding_id, action})
+    });
+    const data = await res.json();
+    if(data.success){
+      showToast('✓ ' + data.message);
+      setTimeout(loadDashboard, 1500);
+    } else {
+      showToast('Error: ' + (data.error||'Unknown error'), false);
+      btnEl.disabled = false;
+    }
+  } catch(e){
+    showToast('Request failed: ' + e.message, false);
+    btnEl.disabled = false;
+  }
+}
+
+function actionButtons(f){
+  const done = ['REMEDIATED','DISMISSED','APPROVED_FOR_FIX'].includes(f.status);
+  if(done){
+    return `<div class="action-btns"><span class="btn btn-done">${f.status==='REMEDIATED'?'✓ Remediated':f.status==='DISMISSED'?'Dismissed':'Approved'}</span></div>`;
+  }
+  const fixLabel = f.rule_id==='FIN-001'?'Snapshot & Tag'
+    : f.rule_id==='NET-001'?'Release IP'
+    : 'Mark Approved';
+  return `<div class="action-btns">
+    <button class="btn btn-fix" onclick="doAction('${f.finding_id}','approve',this)">${fixLabel}</button>
+    <button class="btn btn-dismiss" onclick="doAction('${f.finding_id}','dismiss',this)">Dismiss</button>
+  </div>`;
+}
+
+function renderTable(){
+  const filtered = getFiltered();
+  document.getElementById('table-label').textContent = `${filtered.length} Findings — Sorted by Risk Score`;
+  const tbody = document.getElementById('findings-body');
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="9" class="loading">No findings match your filter.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(f=>`
+    <tr>
+      <td><span class="mono">${f.finding_id||''}</span></td>
+      <td><strong style="font-size:13px">${f.title||''}</strong></td>
+      <td>
+        <span class="mono">${f.resource_id||''}</span>
+        <div class="sub">${f.region||''} · ${f.resource_type||''}</div>
+        ${f.estimated_monthly_cost_usd&&parseFloat(f.estimated_monthly_cost_usd)>0?`<div class="cost-tag">$${f.estimated_monthly_cost_usd}/mo waste</div>`:''}
+      </td>
+      <td><span class="badge b-${f.category}">${f.category||''}</span></td>
+      <td><span class="badge b-${f.severity}">${f.severity||''}</span></td>
+      <td><span class="badge b-${f.status}">${(f.status||'').replace(/_/g,' ')}</span></td>
+      <td>
+        <div class="risk-wrap">
+          <div class="risk-bar"><div class="risk-fill" style="width:${f.risk_score||0}%;background:${riskColor(f.risk_score||0)}"></div></div>
+          <span style="font-size:12px;color:${riskColor(f.risk_score||0)};font-weight:800;min-width:24px">${f.risk_score||0}</span>
+        </div>
+      </td>
+      <td><div class="ai-text">${f.ai_explanation||f.recommendation||''}</div></td>
+      <td>${actionButtons(f)}</td>
+    </tr>
+  `).join('');
+}
+
+function buildCharts(findings){
+  const sev={CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
+  const cat={SECURITY:0,FINOPS:0};
+  const sta={OPEN:0,AWAITING_APPROVAL:0,REMEDIATED:0,DISMISSED:0};
+  findings.forEach(f=>{
+    if(sev[f.severity]!==undefined)sev[f.severity]++;
+    if(cat[f.category]!==undefined)cat[f.category]++;
+    const s=f.status||'OPEN';
+    if(sta[s]!==undefined)sta[s]++;else sta.OPEN++;
+  });
+  const opts={plugins:{legend:{labels:{color:'#546e7a',font:{size:11}}}},maintainAspectRatio:false};
+  if(severityChart)severityChart.destroy();
+  severityChart=new Chart(document.getElementById('severityChart'),{
+    type:'doughnut',
+    data:{labels:['Critical','High','Medium','Low'],datasets:[{data:[sev.CRITICAL,sev.HIGH,sev.MEDIUM,sev.LOW],backgroundColor:['#ef5350','#ffa726','#ffee58','#66bb6a'],borderWidth:0}]},
+    options:opts
+  });
+  if(categoryChart)categoryChart.destroy();
+  categoryChart=new Chart(document.getElementById('categoryChart'),{
+    type:'doughnut',
+    data:{labels:['Security','FinOps'],datasets:[{data:[cat.SECURITY,cat.FINOPS],backgroundColor:['#4fc3f7','#ab47bc'],borderWidth:0}]},
+    options:opts
+  });
+  if(statusChart)statusChart.destroy();
+  statusChart=new Chart(document.getElementById('statusChart'),{
+    type:'bar',
+    data:{
+      labels:['Open','Awaiting','Remediated','Dismissed'],
+      datasets:[{data:[sta.OPEN,sta.AWAITING_APPROVAL,sta.REMEDIATED,sta.DISMISSED],backgroundColor:['#ef5350','#ffa726','#66bb6a','#546e7a'],borderRadius:6,borderWidth:0}]
+    },
+    options:{...opts,scales:{x:{ticks:{color:'#546e7a',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#546e7a'},grid:{color:'#111f33'}}},plugins:{legend:{display:false}}}
+  });
+}
+
+async function loadDashboard(){
+  try{
+    const res = await fetch(DASHBOARD_API);
+    const data = await res.json();
+    const s = data.summary;
+    document.getElementById('stats-grid').innerHTML=`
+      <div class="stat-card c-total"><div class="number">${s.total_findings}</div><div class="label">Total Findings</div></div>
+      <div class="stat-card c-critical"><div class="number">${s.critical}</div><div class="label">Critical</div></div>
+      <div class="stat-card c-high"><div class="number">${s.high}</div><div class="label">High</div></div>
+      <div class="stat-card c-medium"><div class="number">${s.medium}</div><div class="label">Medium</div></div>
+      <div class="stat-card c-low"><div class="number">${s.low}</div><div class="label">Low</div></div>
+      <div class="stat-card c-cost"><div class="number">$${s.estimated_monthly_waste_usd}</div><div class="label">Monthly Waste</div></div>
+    `;
+    allFindings = data.findings;
+    buildCharts(allFindings);
+    renderTable();
+    document.getElementById('last-updated').textContent='Last updated: '+new Date().toLocaleString();
+  } catch(e){
+    document.getElementById('stats-grid').innerHTML=`<div class="loading" style="color:#ef5350;grid-column:1/-1">Error loading dashboard: ${e.message}</div>`;
+  }
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+</body>
+</html>
